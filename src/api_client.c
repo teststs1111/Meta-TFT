@@ -3,7 +3,7 @@
 #include <psp2/net/net.h>
 #include <psp2/net/netctl.h>
 #include <psp2/net/http.h>
-#include <psp2/kernel/threadmgr.h>
+#include <psp2/sysmodule.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,15 +12,32 @@
 #define HTTP_BODY_MAX (512*1024)
 #define JSON_TOKEN_MAX 4096
 static char g_net_mem[256*1024] __attribute__((aligned(8)));
-static int g_net_inited=0, g_http_tmpl_id=-1;
+static int g_net_inited=0, g_http_inited=0, g_net_module=0, g_http_module=0, g_http_tmpl_id=-1;
 int api_client_init(void){
- SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0}; int r=sceNetInit(&p);
- if(r<0 && r!=0x80410010) return r; r=sceNetCtlInit();
- if(r<0) return r; r=sceHttpInit(4*1024*1024); if(r<0) return r;
+ int r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET); if(r<0 && r!=SCE_SYSMODULE_ERROR_DUPLICATE){return r;} g_net_module=1;
+ r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP); if(r<0 && r!=SCE_SYSMODULE_ERROR_DUPLICATE){if(g_net_module)sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;return r;} g_http_module=1;
+ SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0}; r=sceNetInit(&p); if(r<0 && r!=0x80410010) goto fail;
+ g_net_inited=1;
+ r=sceNetCtlInit(); if(r<0 && r!=0x80410102) goto fail;
+ r=sceHttpInit(4*1024*1024); if(r<0) goto fail; g_http_inited=1;
  g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
- if(g_http_tmpl_id<0) return g_http_tmpl_id; g_net_inited=1; return 0;
+ if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
+ return 0;
+fail:
+ if(g_http_tmpl_id>=0){sceHttpDeleteTemplate(g_http_tmpl_id);g_http_tmpl_id=-1;}
+ if(g_http_inited){sceHttpTerm();g_http_inited=0;}
+ if(g_net_inited){sceNetCtlTerm();sceNetTerm();g_net_inited=0;}
+ if(g_http_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_HTTP);g_http_module=0;}
+ if(g_net_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;}
+ return r;
 }
-void api_client_shutdown(void){if(!g_net_inited)return; if(g_http_tmpl_id>=0)sceHttpDeleteTemplate(g_http_tmpl_id); sceHttpTerm();sceNetCtlTerm();sceNetTerm();g_net_inited=0;}
+void api_client_shutdown(void){
+ if(g_http_tmpl_id>=0){sceHttpDeleteTemplate(g_http_tmpl_id);g_http_tmpl_id=-1;}
+ if(g_http_inited){sceHttpTerm();g_http_inited=0;}
+ if(g_net_inited){sceNetCtlTerm();sceNetTerm();g_net_inited=0;}
+ if(g_http_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_HTTP);g_http_module=0;}
+ if(g_net_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;}
+}
 static int http_get(const char *url,char **out){
  int r,conn=-1,req=-1,status=0; char *body=NULL; size_t len=0,cap=HTTP_RECV_CHUNK; unsigned long long cl=0;
  conn=sceHttpCreateConnectionWithURL(g_http_tmpl_id,url,SCE_FALSE); if(conn<0){r=conn;goto fail;}
