@@ -10,7 +10,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install build tools
-        run: apk add --no-cache git cmake make
+        run: apt-get update && apt-get install -y git cmake make
       - name: Install vita2d and dependencies
         run: vdpm vita2d
       - name: Configure
