@@ -19,8 +19,10 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE include src)
 target_link_libraries(${PROJECT_NAME}
     vita2d SceDisplay_stub SceGxm_stub SceSysmodule_stub
-    SceCtrl_stub ScePgf_stub SceTouch_stub SceHttp_stub SceSsl_stub
-    SceNet_stub SceNetCtl_stub SceAppMgr_stub m c freetype png jpeg z
+    SceCtrl_stub SceTouch_stub SceHttp_stub
+    SceNet_stub SceNetCtl_stub SceAppMgr_stub
+    SceCommonDialog_stub ScePgf_stub ScePvf_stub
+    m c freetype png jpeg z
 )
 vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
 vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
