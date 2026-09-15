@@ -15,8 +15,11 @@ jobs:
       - name: Install build tools
         run: apt-get update && apt-get install -y git cmake make
 
-      - name: Install Vita2D and dependencies
+      - name: Install Vita libraries
         run: vdpm install libvita2d
+
+      - name: Show VitaSDK status
+        run: vdpm status
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=${VITASDK}/share/vita.toolchain.cmake
@@ -25,7 +28,10 @@ jobs:
         run: cmake --build build --verbose
 
       - name: List build output
-        run: find build -maxdepth 3 -type f
+        run: find build -maxdepth 3 -type f -print
+
+      - name: Verify VPK
+        run: test -f build/metatft_vita.vpk
 
       - name: Upload VPK
         uses: actions/upload-artifact@v4
