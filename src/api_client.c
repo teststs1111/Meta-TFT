@@ -14,12 +14,11 @@
 static char g_net_mem[256*1024] __attribute__((aligned(8)));
 static int g_net_inited=0, g_http_inited=0, g_net_module=0, g_http_module=0, g_http_tmpl_id=-1;
 int api_client_init(void){
- int r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET); if(r<0 && r!=SCE_SYSMODULE_ERROR_DUPLICATE){return r;} g_net_module=1;
- r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP); if(r<0 && r!=SCE_SYSMODULE_ERROR_DUPLICATE){if(g_net_module)sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;return r;} g_http_module=1;
- SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0}; r=sceNetInit(&p); if(r<0 && r!=0x80410010) goto fail;
- g_net_inited=1;
- r=sceNetCtlInit(); if(r<0 && r!=0x80410102) goto fail;
- r=sceHttpInit(4*1024*1024); if(r<0) goto fail; g_http_inited=1;
+ int r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET); if(r<0)return r; g_net_module=1;
+ r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP); if(r<0)goto fail; g_http_module=1;
+ SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0}; r=sceNetInit(&p); if(r<0)goto fail; g_net_inited=1;
+ r=sceNetCtlInit(); if(r<0)goto fail;
+ r=sceHttpInit(4*1024*1024); if(r<0)goto fail; g_http_inited=1;
  g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
  if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
  return 0;
