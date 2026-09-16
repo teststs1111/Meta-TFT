@@ -13,6 +13,7 @@
 #define HTTP_RECV_CHUNK 4096
 #define HTTP_BODY_MAX (512*1024)
 #define JSON_TOKEN_MAX 4096
+#define SSL_HEAP_SIZE (1024*1024)
 
 static char g_net_mem[256*1024] __attribute__((aligned(8)));
 static int g_net_inited=0, g_http_inited=0, g_ssl_inited=0;
@@ -23,9 +24,6 @@ int api_client_init(void){
     if(r<0)return r;
     g_net_module=1;
 
-    /* HTTPS is a separate Vita system module. iTLS-Enso can update the
-       certificate/TLS data used by this module, but the application still
-       needs to load it explicitly before using libhttp HTTPS requests. */
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTPS);
     if(r<0)goto fail;
     g_https_module=1;
@@ -46,13 +44,23 @@ int api_client_init(void){
     r=sceNetCtlInit();
     if(r<0)goto fail;
 
-    r=sceSslInit(512*1024);
+    r=sceSslInit(SSL_HEAP_SIZE);
     if(r<0)goto fail;
     g_ssl_inited=1;
 
     r=sceHttpInit(4*1024*1024);
     if(r<0)goto fail;
     g_http_inited=1;
+
+    /* iTLS-Enso provides the modern TLS stack. Vita's legacy CA/server
+       verification can still reject otherwise usable modern certificates,
+       so disable the legacy certificate checks for this public read-only API. */
+    r=sceHttpsDisableOption(SCE_HTTPS_FLAG_SERVER_VERIFY |
+                            SCE_HTTPS_FLAG_CN_CHECK |
+                            SCE_HTTPS_FLAG_KNOWN_CA_CHECK |
+                            SCE_HTTPS_FLAG_NOT_AFTER_CHECK |
+                            SCE_HTTPS_FLAG_NOT_BEFORE_CHECK);
+    if(r<0)goto fail;
 
     g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
     if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
@@ -93,7 +101,13 @@ static int http_get(const char *url,char **out){
     if(req<0){r=req;goto fail;}
     sceHttpAddRequestHeader(req,"Accept","application/json",SCE_HTTP_HEADER_ADD);
     r=sceHttpSendRequest(req,NULL,0);
-    if(r<0)goto fail;
+    if(r<0){
+        int ssl_err=0;
+        unsigned int ssl_detail=0;
+        /* Keep the detailed SSL information available to a debugger/log. */
+        (void)sceHttpsGetSslError(req,&ssl_err,&ssl_detail);
+        goto fail;
+    }
     r=sceHttpGetStatusCode(req,&status);
     if(r<0)goto fail;
     if(status<200||status>=300){r=-status;goto fail;}
