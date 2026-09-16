@@ -3,6 +3,7 @@
 #include <psp2/net/net.h>
 #include <psp2/net/netctl.h>
 #include <psp2/net/http.h>
+#include <psp2/libssl.h>
 #include <psp2/sysmodule.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,12 +13,15 @@
 #define HTTP_BODY_MAX (512*1024)
 #define JSON_TOKEN_MAX 4096
 static char g_net_mem[256*1024] __attribute__((aligned(8)));
-static int g_net_inited=0, g_http_inited=0, g_net_module=0, g_http_module=0, g_http_tmpl_id=-1;
+static int g_net_inited=0, g_http_inited=0, g_ssl_inited=0;
+static int g_net_module=0, g_http_module=0, g_ssl_module=0, g_http_tmpl_id=-1;
 int api_client_init(void){
  int r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET); if(r<0)return r; g_net_module=1;
+ r=sceSysmoduleLoadModule(SCE_SYSMODULE_SSL); if(r<0)goto fail; g_ssl_module=1;
  r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP); if(r<0)goto fail; g_http_module=1;
  SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0}; r=sceNetInit(&p); if(r<0)goto fail; g_net_inited=1;
  r=sceNetCtlInit(); if(r<0)goto fail;
+ r=sceSslInit(300*1024); if(r<0)goto fail; g_ssl_inited=1;
  r=sceHttpInit(4*1024*1024); if(r<0)goto fail; g_http_inited=1;
  g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
  if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
@@ -25,16 +29,20 @@ int api_client_init(void){
 fail:
  if(g_http_tmpl_id>=0){sceHttpDeleteTemplate(g_http_tmpl_id);g_http_tmpl_id=-1;}
  if(g_http_inited){sceHttpTerm();g_http_inited=0;}
+ if(g_ssl_inited){sceSslTerm();g_ssl_inited=0;}
  if(g_net_inited){sceNetCtlTerm();sceNetTerm();g_net_inited=0;}
  if(g_http_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_HTTP);g_http_module=0;}
+ if(g_ssl_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_SSL);g_ssl_module=0;}
  if(g_net_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;}
  return r;
 }
 void api_client_shutdown(void){
  if(g_http_tmpl_id>=0){sceHttpDeleteTemplate(g_http_tmpl_id);g_http_tmpl_id=-1;}
  if(g_http_inited){sceHttpTerm();g_http_inited=0;}
+ if(g_ssl_inited){sceSslTerm();g_ssl_inited=0;}
  if(g_net_inited){sceNetCtlTerm();sceNetTerm();g_net_inited=0;}
  if(g_http_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_HTTP);g_http_module=0;}
+ if(g_ssl_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_SSL);g_ssl_module=0;}
  if(g_net_module){sceSysmoduleUnloadModule(SCE_SYSMODULE_NET);g_net_module=0;}
 }
 static int http_get(const char *url,char **out){
