@@ -52,14 +52,9 @@ int api_client_init(void){
     if(r<0)goto fail;
     g_http_inited=1;
 
-    /* iTLS-Enso provides the modern TLS stack. Vita's legacy CA/server
-       verification can still reject otherwise usable modern certificates,
-       so disable the legacy certificate checks for this public read-only API. */
-    r=sceHttpsDisableOption(SCE_HTTPS_FLAG_SERVER_VERIFY |
-                            SCE_HTTPS_FLAG_CN_CHECK |
-                            SCE_HTTPS_FLAG_KNOWN_CA_CHECK |
-                            SCE_HTTPS_FLAG_NOT_AFTER_CHECK |
-                            SCE_HTTPS_FLAG_NOT_BEFORE_CHECK);
+    /* Vita HTTPS exposes the legacy server-verification switch for iTLS-Enso.
+       Other verification flags can be rejected as prohibited options on Vita. */
+    r=sceHttpsDisableOption(SCE_HTTPS_FLAG_SERVER_VERIFY);
     if(r<0)goto fail;
 
     g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
@@ -104,7 +99,6 @@ static int http_get(const char *url,char **out){
     if(r<0){
         int ssl_err=0;
         unsigned int ssl_detail=0;
-        /* Keep the detailed SSL information available to a debugger/log. */
         (void)sceHttpsGetSslError(req,&ssl_err,&ssl_detail);
         goto fail;
     }
