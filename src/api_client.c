@@ -52,11 +52,9 @@ int api_client_init(void){
     if(r<0)goto fail;
     g_http_inited=1;
 
-    /* Vita HTTPS exposes the legacy server-verification switch for iTLS-Enso.
-       Other verification flags can be rejected as prohibited options on Vita. */
-    r=sceHttpsDisableOption(SCE_HTTPS_FLAG_SERVER_VERIFY);
-    if(r<0)goto fail;
-
+    /* Keep Vita HTTPS server verification enabled. iTLS-Enso supplies the
+       updated trust/TLS environment; disabling this option is rejected by
+       some Vita firmware/HTTPS configurations. */
     g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
     if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
     return 0;
