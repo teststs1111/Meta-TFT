@@ -15,8 +15,14 @@ static vita2d_pgf *font;
 static int init_and_fetch(void) {
     int ret;
 
-    api_ready = 0;
+    /* Always start from a clean client state. */
+    if (api_ready) {
+        api_client_shutdown();
+        api_ready = 0;
+    }
+
     status = 0;
+    error_code = 0;
     count = 0;
     scroll = 0;
 
@@ -27,14 +33,16 @@ static int init_and_fetch(void) {
         return ret;
     }
 
-    api_ready = 1;
     ret = api_fetch_ranked_list("unit_tier", "queue=1100&patch=current", "unit_tier", entries, MAX_ENTRIES, &count);
     if (ret < 0) {
+        api_client_shutdown();
         status = -1;
         error_code = ret;
+        api_ready = 0;
         return ret;
     }
 
+    api_ready = 1;
     ranked_entries_sort_by_place(entries, count);
     status = 1;
     return 0;
@@ -78,8 +86,6 @@ int main(void) {
         int pressed = pad.buttons & ~prev.buttons;
 
         if (pressed & SCE_CTRL_CROSS) {
-            /* Do not call the HTTP client after a failed initialization.
-               Retry initialization first so the old crash path is impossible. */
             init_and_fetch();
         }
 
