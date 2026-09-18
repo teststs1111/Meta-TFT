@@ -18,36 +18,52 @@
 static char g_net_mem[256*1024] __attribute__((aligned(8)));
 static int g_net_inited=0, g_http_inited=0, g_ssl_inited=0;
 static int g_net_module=0, g_http_module=0, g_ssl_module=0, g_https_module=0, g_http_tmpl_id=-1;
+static const char *g_init_stage="start";
+static int g_last_ssl_err=0;
+static unsigned int g_last_ssl_detail=0;
+
+const char *api_client_init_stage(void){return g_init_stage;}
+int api_client_last_ssl_error(void){return g_last_ssl_err;}
+unsigned int api_client_last_ssl_detail(void){return g_last_ssl_detail;}
 
 int api_client_init(void){
-    int r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+    int r;
+    g_init_stage="load NET";
+    r=sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
     if(r<0)return r;
     g_net_module=1;
 
+    g_init_stage="load HTTPS";
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTPS);
     if(r<0)goto fail;
     g_https_module=1;
 
+    g_init_stage="load SSL";
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_SSL);
     if(r<0)goto fail;
     g_ssl_module=1;
 
+    g_init_stage="load HTTP";
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP);
     if(r<0)goto fail;
     g_http_module=1;
 
+    g_init_stage="sceNetInit";
     SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0};
     r=sceNetInit(&p);
     if(r<0)goto fail;
     g_net_inited=1;
 
+    g_init_stage="sceNetCtlInit";
     r=sceNetCtlInit();
     if(r<0)goto fail;
 
+    g_init_stage="sceSslInit";
     r=sceSslInit(SSL_HEAP_SIZE);
     if(r<0)goto fail;
     g_ssl_inited=1;
 
+    g_init_stage="sceHttpInit";
     r=sceHttpInit(4*1024*1024);
     if(r<0)goto fail;
     g_http_inited=1;
@@ -55,8 +71,18 @@ int api_client_init(void){
     /* Keep Vita HTTPS server verification enabled. iTLS-Enso supplies the
        updated trust/TLS environment; disabling this option is rejected by
        some Vita firmware/HTTPS configurations. */
+g_init_stage="sceHttpCreateTemplate";
     g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_TRUE);
-    if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
+    if(g_http_tmpl_id<0){
+        /* Some HTTPS/iTLS combinations reject the keep-alive template option.
+           Retry with keep-alive disabled before declaring initialization failed. */
+        if(g_http_tmpl_id==(int)0x8043506B){
+            g_init_stage="sceHttpCreateTemplate fallback";
+            g_http_tmpl_id=sceHttpCreateTemplate("metatft-vita/0.1",SCE_HTTP_VERSION_1_1,SCE_FALSE);
+        }
+        if(g_http_tmpl_id<0){r=g_http_tmpl_id;goto fail;}
+    }
+    g_init_stage="ready";
     return 0;
 
 fail:
@@ -95,9 +121,9 @@ static int http_get(const char *url,char **out){
     sceHttpAddRequestHeader(req,"Accept","application/json",SCE_HTTP_HEADER_ADD);
     r=sceHttpSendRequest(req,NULL,0);
     if(r<0){
-        int ssl_err=0;
-        unsigned int ssl_detail=0;
-        (void)sceHttpsGetSslError(req,&ssl_err,&ssl_detail);
+        g_last_ssl_err=0;
+        g_last_ssl_detail=0;
+        (void)sceHttpsGetSslError(req,&g_last_ssl_err,&g_last_ssl_detail);
         goto fail;
     }
     r=sceHttpGetStatusCode(req,&status);
