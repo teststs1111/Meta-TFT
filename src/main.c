@@ -54,9 +54,9 @@ static void draw(void) {
     if (status == 1) {
         snprintf(buf, sizeof(buf), "%d entries  (avg place / win%% / top4%%)", count);
     } else if (status == -2) {
-        snprintf(buf, sizeof(buf), "init error: %d  (X: retry)", error_code);
+        snprintf(buf, sizeof(buf), "init error: %d [%s]  (X: retry)", error_code, api_client_init_stage());
     } else if (status < 0) {
-        snprintf(buf, sizeof(buf), "fetch error: %d  (X: retry)", error_code);
+        snprintf(buf, sizeof(buf), "fetch error: %d ssl:%d detail:%02X  (X: retry)", error_code, api_client_last_ssl_error(), api_client_last_ssl_detail());
     } else {
         strcpy(buf, "loading...");
     }
