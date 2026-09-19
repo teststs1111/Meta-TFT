@@ -33,11 +33,8 @@ int api_client_init(void){
     if(r<0)return r;
     g_net_module=1;
 
-    g_init_stage="load HTTPS";
-    r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTPS);
-    if(r<0)goto fail;
-    g_https_module=1;
-
+    /* Load the HTTP/SSL stack in the same order used by established Vita
+       network applications. HTTPS is loaded after SSL/HTTP. */
     g_init_stage="load SSL";
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_SSL);
     if(r<0)goto fail;
@@ -47,6 +44,11 @@ int api_client_init(void){
     r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTP);
     if(r<0)goto fail;
     g_http_module=1;
+
+    g_init_stage="load HTTPS";
+    r=sceSysmoduleLoadModule(SCE_SYSMODULE_HTTPS);
+    if(r<0)goto fail;
+    g_https_module=1;
 
     g_init_stage="sceNetInit";
     SceNetInitParam p={g_net_mem,sizeof(g_net_mem),0};
