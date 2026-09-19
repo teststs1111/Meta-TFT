@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install build tools
-        run: apt-get update && apt-get install -y git cmake make pngquant
+        run: apt-get update && apt-get install -y git cmake make ffmpeg
 
       - name: Install Vita libraries
         run: vdpm install libvita2d
@@ -21,7 +21,8 @@ jobs:
       - name: Normalize LiveArea PNGs
         run: |
           if [ -f assets/pic0.png ]; then
-            pngquant --force --quality 80-100 --output /tmp/pic0.png assets/pic0.png
+            ffmpeg -y -i assets/pic0.png -vf "scale=960:544,format=rgb24,palettegen=max_colors=256" /tmp/palette.png
+            ffmpeg -y -i assets/pic0.png -i /tmp/palette.png -filter_complex "scale=960:544:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a" -frames:v 1 /tmp/pic0.png
             mv /tmp/pic0.png assets/pic0.png
           fi
 
