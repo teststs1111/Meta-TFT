@@ -9,7 +9,7 @@ include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "MetaTFT Viewer")
 set(VITA_TITLEID "METATFT01")
-set(VITA_VERSION "01.00")
+set(VITA_VERSION "01.01")
 set(CMAKE_C_STANDARD 11)
 
 add_executable(${PROJECT_NAME}
