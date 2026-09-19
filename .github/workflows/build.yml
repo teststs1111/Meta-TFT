@@ -20,11 +20,38 @@ jobs:
 
       - name: Normalize LiveArea PNGs
         run: |
+          mkdir -p assets/livearea/contents
+
+          # pic0: Vita loading image, strictly 256-color indexed PNG.
           if [ -f assets/pic0.png ]; then
             ffmpeg -y -i assets/pic0.png -vf "scale=960:544,format=rgb24,palettegen=max_colors=256" /tmp/palette.png
             ffmpeg -y -i assets/pic0.png -i /tmp/palette.png -filter_complex "scale=960:544:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a" -frames:v 1 /tmp/pic0.png
             mv /tmp/pic0.png assets/pic0.png
           fi
+
+          # bg0: LiveArea paper background, 840x500, indexed PNG.
+          if [ -f assets/pic0.png ]; then
+            ffmpeg -y -i assets/pic0.png -vf "scale=840:500:flags=lanczos,format=rgb24,palettegen=max_colors=256" /tmp/bg_palette.png
+            ffmpeg -y -i assets/pic0.png -i /tmp/bg_palette.png -filter_complex "scale=840:500:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a" -frames:v 1 assets/livearea/contents/bg0.png
+          fi
+
+          # startup: center image above the Start/Resume button, 280x158.
+          if [ -f assets/pic0.png ]; then
+            ffmpeg -y -i assets/pic0.png -vf "scale=280:158:flags=lanczos,format=rgb24,palettegen=max_colors=256" /tmp/start_palette.png
+            ffmpeg -y -i assets/pic0.png -i /tmp/start_palette.png -filter_complex "scale=280:158:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a" -frames:v 1 assets/livearea/contents/startup.png
+          fi
+
+          cat > assets/livearea/contents/template.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <livearea style="a1" format-ver="01.00" content-rev="1">
+              <livearea-background>
+                  <image>bg0.png</image>
+              </livearea-background>
+              <gate>
+                  <startup-image>startup.png</startup-image>
+              </gate>
+          </livearea>
+          EOF
 
       - name: Show VitaSDK status
         run: vdpm status
@@ -36,7 +63,7 @@ jobs:
         run: cmake --build build --verbose
 
       - name: List build output
-        run: find build -maxdepth 3 -type f -print
+        run: find build -maxdepth 4 -type f -print
 
       - name: Verify VPK
         run: test -f build/metatft_vita.vpk
