@@ -24,13 +24,31 @@ target_link_libraries(${PROJECT_NAME}
     SceCommonDialog_stub ScePgf_stub ScePvf_stub
     m c freetype png jpeg z
 )
+
 vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
+
+set(VPK_FILES
+    FILE ${CMAKE_SOURCE_DIR}/assets/icon0.png sce_sys/icon0.png
+    FILE ${CMAKE_SOURCE_DIR}/assets/pic0.png sce_sys/pic0.png
+)
+
+# bg0 is supplied manually by the project owner.
+# When present, package it as the LiveArea background.
+if(EXISTS "${CMAKE_SOURCE_DIR}/assets/livearea/contents/bg0.png")
+    list(APPEND VPK_FILES
+        FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/bg0.png sce_sys/livearea/contents/bg0.png
+    )
+endif()
+
+# Keep the LiveArea template in the VPK when present.
+if(EXISTS "${CMAKE_SOURCE_DIR}/assets/livearea/contents/template.xml")
+    list(APPEND VPK_FILES
+        FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
+    )
+endif()
+
 vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
     VERSION ${VITA_VERSION}
     NAME ${VITA_APP_NAME}
-    FILE ${CMAKE_SOURCE_DIR}/assets/icon0.png sce_sys/icon0.png
-    FILE ${CMAKE_SOURCE_DIR}/assets/pic0.png sce_sys/pic0.png
-    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/bg0.png sce_sys/livearea/contents/bg0.png
-    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
-    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
+    ${VPK_FILES}
 )
