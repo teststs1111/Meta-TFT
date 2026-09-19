@@ -9,7 +9,7 @@ include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "MetaTFT Viewer")
 set(VITA_TITLEID "METATFT01")
-set(VITA_VERSION "01.01")
+set(VITA_VERSION "01.02")
 set(CMAKE_C_STANDARD 11)
 
 add_executable(${PROJECT_NAME}
@@ -30,4 +30,7 @@ vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
     NAME ${VITA_APP_NAME}
     FILE ${CMAKE_SOURCE_DIR}/assets/icon0.png sce_sys/icon0.png
     FILE ${CMAKE_SOURCE_DIR}/assets/pic0.png sce_sys/pic0.png
+    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/bg0.png sce_sys/livearea/contents/bg0.png
+    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
+    FILE ${CMAKE_SOURCE_DIR}/assets/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
 )
